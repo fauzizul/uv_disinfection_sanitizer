@@ -1,0 +1,86 @@
+#include<p18F4550.inc>
+
+loop_cnt1 	set 0x00
+loop_cnt2 	set 0x01
+hold		set	0x02
+buzz		set	0x03
+
+			org 0x00
+			goto start
+			org 0x08
+			retfie
+			org 0x18
+			retfie
+dup_nop 		macro kk
+			variable i
+i = 0
+			while i < kk
+			nop
+i += 1
+			endw
+			endm
+;main program
+start 		SETF 	TRISB,A 	;configure portB as input
+			CLRF	TRISA,A 	;CONFIGURE PORTA
+			CLRF	PORTA,A
+			BCF		TRISC,2,A
+			BCF		PORTC,2,A
+			CLRF 	TRISE,A 	;configure portE as output
+			CLRF 	TRISD,A 	;configure portD as output
+			CLRF 	PORTD,A 	;initialize portD to turn OFF
+			CLRF 	PRODH,A 	;initialize PRODH to hold the value
+
+		
+AGAIN1		BTFSS 	PORTB,1 	;check SW2 condition
+			BRA		LED
+			BRA		AGAIN1
+
+LED			CLRF	PRODH,A
+			MOVLW	0x1E
+			MOVWF	hold,A
+			SETF	PORTA,A
+LOOP		MOVFF 	PRODH,PORTD
+			CALL 	DELAY1S
+			CALL	AGAIN
+			INCF 	PRODH,F,A
+			DECFSZ	hold,F,A
+			BRA 	LOOP
+			MOVLW	0x03
+			MOVWF	buzz
+LOOP1		BSF		PORTC, 2, A
+			CALL	DELAY1S
+			BCF		PORTC, 2, A
+			CALL	DELAY1S
+			DECFSZ	buzz
+			BRA		LOOP1
+			CLRF	PRODH,A
+			CLRF	PORTA,A
+			CLRF	PORTD,A
+			BRA		AGAIN1
+
+;*************************************************************
+AGAIN		BTFSS	PORTB,2
+			BRA		OFF_LED			;disable 1st 7seg, enable 2nd 7seg
+			RETURN
+
+OFF_LED		CLRF	PORTA
+			CLRF	PORTD
+			BRA		AGAIN1
+;**************************************************************
+
+DELAY1S 	MOVLW D'80' ;1sec delay subroutine for
+			MOVWF loop_cnt2,A ;20MHz
+AGAIN2 		MOVLW D'250'
+			MOVWF loop_cnt1,A
+AGAIN3		dup_nop D'247'
+			DECFSZ loop_cnt1,F,A
+			BRA AGAIN3
+			DECFSZ loop_cnt2,F,A
+			BRA AGAIN2
+			NOP
+				
+			RETURN
+
+
+
+			END
